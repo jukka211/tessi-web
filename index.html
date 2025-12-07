@@ -1,0 +1,698 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Flex grid — animated expand (multi)</title>
+<link rel="stylesheet" href="https://use.typekit.net/swx5idg.css">
+<style>
+:root{
+  --cols: 6;             /* target number of columns */
+  --gap: 4px;           /* gap between items */
+  --expand-span: 2.5;   /* how many columns an expanded tile spans */
+  --expand-scale: 1.06; /* inner image scale when expanded */
+  --min-tile-width: 40px;/* safety min width for very narrow viewports */
+}
+
+/* container computes the cell width based on --cols and --gap */
+.container {
+  --cell-width: calc((100% - (var(--cols) - 1) * var(--gap)) / var(--cols));
+  box-sizing: border-box;
+  padding: 4px;
+  max-width:100vw;
+  margin: 0 auto;
+  width: 100%;
+  overflow-x: hidden;
+}
+
+html,body {
+  height: 100%;
+  margin: 0;
+  font-family: helvetica-neue-lt-pro, sans-serif;
+  font-weight: 500;
+  font-style: normal;
+  overflow-x: hidden;
+}
+
+/* flex grid: wrap into multiple rows */
+.flex-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gap);
+  align-items: flex-start;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* tile: normally occupies one cell */
+.tile {
+  flex: 0 0 var(--cell-width);
+  min-width: var(--min-tile-width);
+  box-sizing: border-box;
+  background: #fff;
+  overflow: hidden;
+  cursor: pointer;
+  transition:
+    flex-basis 420ms cubic-bezier(.18,.9,.2,1),
+    transform 300ms ease,
+    box-shadow 220ms ease;
+  will-change: transform;
+  position: relative;
+  display: block;
+}
+
+/* image fills the tile width */
+.tile img {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  object-position: center;
+  transition: transform 360ms cubic-bezier(.2,.9,.2,1);
+  will-change: transform;
+}
+
+/* expanded tile */
+.tile.expanded {
+  flex-basis: calc((var(--cell-width) * var(--expand-span)) + (var(--gap) * (var(--expand-span) - 1)));
+  z-index: 5;
+  overflow: visible; /* allow title to show */
+}
+
+/* slightly scale internal image for extra "pop" - removed scale to not cover title */
+.tile.expanded img {
+  transform: none;
+}
+
+/* tiles marked as "shrunk" by JS get smaller */
+.tile.shrunk {
+  /* This will be set dynamically by JS based on available space */
+}
+
+/* title - hidden by default, shown when expanded */
+.title {
+  display: none;
+  justify-content: space-between;
+  width: 100%;
+  padding: 4px 0;
+  font-size: 14px;
+  box-sizing: border-box;
+  background: #fff;
+}
+
+.tile.expanded .title {
+  display: flex;
+}
+
+/* responsive adjustments */
+@media (max-width: 1200px) {
+  :root { --cols: 5; }
+}
+@media (max-width: 800px) {
+  :root { --cols: 3; }
+}
+@media (max-width: 480px) {
+  :root { --cols: 2; --gap: 10px; }
+  .tile { min-width: 90px; }
+}
+
+/* Mobile: expanded tile and overlay fixes */
+@media (max-width: 768px) {
+  .tile.expanded {
+    flex-basis: calc(100vw - 8px) !important;
+    max-width: calc(100vw - 8px);
+  }
+
+  .overlay-grid {
+    grid-template-columns: 1fr !important;
+    grid-template-rows: auto auto auto !important;
+    height: auto !important;
+  }
+  
+  .overlay-about,
+  .overlay-projects,
+  .overlay-contact {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .overlay {
+    overflow-y: auto;
+  }
+}
+
+/* Info button */
+.info-btn {
+  position: fixed;
+  top: 0px;
+  right: 0px;
+  background-color: #fff;
+  border: none;
+  font-size: 14px;
+  cursor: pointer;
+  z-index: 100;
+  height: 20px;
+  padding-left: 6px;
+  padding-right: 6px;
+  font-family: inherit;
+}
+
+.info-btn:hover {
+  background: rgb(209, 209, 209);
+}
+
+/* Overlay */
+.overlay {
+  display: none;
+  position: fixed;
+  top: 20px;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgb(245, 245, 245);
+  z-index: 99;
+  padding: 4px;
+  padding-top: 0;
+  box-sizing: border-box;
+}
+
+.overlay.active {
+  display: block;
+}
+
+/* Overlay grid - 6 columns, 2 rows */
+.overlay-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  gap: 4px;
+  width: 100%;
+  height: 100%;
+  margin-top: 0;
+}
+
+.overlay-item {
+  padding: 0px;
+  font-size: 14px;
+  line-height: 1.1;
+  overflow: auto;
+  background-color: rgb(255, 255, 255);
+}
+
+.overlay-item h3 {
+  margin: 0 0 0px 0;
+  font-size: 14px;
+  font-weight: normal;
+}
+
+.overlay-item a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.overlay-item a:hover {
+  text-decoration: underline;
+}
+
+/* Contact div */
+.overlay-contact {
+  padding: 4px;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  gap: 15px;
+}
+
+.contact-items {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* About div */
+.overlay-about {
+  padding: 4px;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  gap: 15px;
+}
+
+.overlay-about h3 {
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.about-text {
+  flex: 1;
+}
+
+.about-text p {
+  margin: 0 0 10px 0;
+}
+
+/* Projects div */
+.overlay-projects {
+  padding: 4px;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  gap: 15px;
+}
+
+.overlay-projects h3 {
+  margin: 0;
+  flex-shrink: 0;
+  flex: 1;
+}
+
+.project-list {
+  flex: 1;
+}
+
+.project-item {
+  margin-bottom: 12px;
+}
+
+</style>
+</head>
+<body>
+  <!-- Info Button -->
+  <button class="info-btn" id="infoBtn">About</button>
+  
+  <!-- Overlay -->
+  <div class="overlay" id="overlay">
+    <div class="overlay-grid" id="overlayGrid">
+      <!-- Divs will be positioned by JS -->
+    </div>
+  </div>
+
+  <div class="container">
+    <div id="grid" class="flex-grid" aria-label="Image grid">
+      <div class="tile" tabindex="0"><img src="Fotos_Reihe/Tessi_Lehner_Website_1.webp" alt="1"><div class="title"><span>Title 1</span><span>Medium, Year</span></div></div>
+      <div class="tile" tabindex="0"><img src="Fotos_Reihe/Tessi_Lehner_Website_02.jpg" alt="2"><div class="title"><span>Title 2</span><span>Medium, Year</span></div></div>
+      <div class="tile" tabindex="0"><img src="Fotos_Reihe/Tessi_Lehner_Website_03.jpg" alt="3"><div class="title"><span>Title 3</span><span>Medium, Year</span></div></div>
+      <div class="tile" tabindex="0"><img src="Fotos_Reihe/Tessi_Lehner_Website_04.jpg" alt="4"><div class="title"><span>Title 4</span><span>Medium, Year</span></div></div>
+      <div class="tile" tabindex="0"><img src="Fotos_Reihe/Tessi_Lehner_Website_05.jpg" alt="5"><div class="title"><span>Title 5</span><span>Medium, Year</span></div></div>
+      <div class="tile" tabindex="0"><img src="Fotos_Reihe/Tessi_Lehner_Website_06.jpg" alt="6"><div class="title"><span>Title 6</span><span>Medium, Year</span></div></div>
+      <div class="tile" tabindex="0"><img src="Fotos_Reihe/Tessi_Lehner_Website_07.jpg" alt="7"><div class="title"><span>Title 7</span><span>Medium, Year</span></div></div>
+      <div class="tile" tabindex="0"><img src="Fotos_Reihe/Tessi_Lehner_Website_08.jpg" alt="8"><div class="title"><span>Title 8</span><span>Medium, Year</span></div></div>
+      <div class="tile" tabindex="0"><img src="Fotos_Reihe/Tessi_Lehner_Website_09.jpg" alt="9"><div class="title"><span>Title 9</span><span>Medium, Year</span></div></div>
+      <div class="tile" tabindex="0"><img src="Fotos_Reihe/Tessi_Lehner_Website_10.jpg" alt="10"><div class="title"><span>Title 10</span><span>Medium, Year</span></div></div>
+      <div class="tile" tabindex="0"><img src="Fotos_Reihe/Tessi_Lehner_Website_11.jpg" alt="11"><div class="title"><span>Title 11</span><span>Medium, Year</span></div></div>
+      <div class="tile" tabindex="0"><img src="Fotos_Reihe/Tessi_Lehner_Website_12.jpg" alt="12"><div class="title"><span>Title 12</span><span>Medium, Year</span></div></div>
+      <div class="tile" tabindex="0"><img src="Fotos_Reihe/Tessi_Lehner_Website_13.jpg" alt="13"><div class="title"><span>Title 13</span><span>Medium, Year</span></div></div>
+      <div class="tile" tabindex="0"><img src="Fotos_Reihe/Tessi_Lehner_Website_14.jpg" alt="14"><div class="title"><span>Title 14</span><span>Medium, Year</span></div></div>
+      <div class="tile" tabindex="0"><img src="Fotos_Reihe/Tessi_Lehner_Website_15.jpg" alt="15"><div class="title"><span>Title 15</span><span>Medium, Year</span></div></div>
+      <div class="tile" tabindex="0"><img src="Fotos_Reihe/Tessi_Lehner_Website_16.jpg" alt="16"><div class="title"><span>Title 16</span><span>Medium, Year</span></div></div>
+      <div class="tile" tabindex="0"><img src="Fotos_Reihe/Tessi_Lehner_Website_17.jpg" alt="17"><div class="title"><span>Title 17</span><span>Medium, Year</span></div></div>
+      <div class="tile" tabindex="0"><img src="Fotos_Reihe/Tessi_Lehner_Website_18.jpg" alt="18"><div class="title"><span>Title 18</span><span>Medium, Year</span></div></div>
+      <div class="tile" tabindex="0"><img src="Fotos_Reihe/Tessi_Lehner_Website_19.jpg" alt="19"><div class="title"><span>Title 19</span><span>Medium, Year</span></div></div>
+      <div class="tile" tabindex="0"><img src="Fotos_Reihe/Tessi_Lehner_Website_20.jpg" alt="20"><div class="title"><span>Title 20</span><span>Medium, Year</span></div></div>
+      <div class="tile" tabindex="0"><img src="Fotos_Reihe/Tessi_Lehner_Website_21.jpg" alt="21"><div class="title"><span>Title 21</span><span>Medium, Year</span></div></div>
+      <div class="tile" tabindex="0"><img src="Fotos_Reihe/Tessi_Lehner_Website_22.jpg" alt="22"><div class="title"><span>Title 22</span><span>Medium, Year</span></div></div>
+      <div class="tile" tabindex="0"><img src="Fotos_Reihe/Tessi_Lehner_Website_23.jpg" alt="23"><div class="title"><span>Title 23</span><span>Medium, Year</span></div></div>
+      <div class="tile" tabindex="0"><img src="Fotos_Reihe/Tessi_Lehner_Website_24.jpg" alt="24"><div class="title"><span>Title 24</span><span>Medium, Year</span></div></div>
+      <div class="tile" tabindex="0"><img src="Fotos_Reihe/Tessi_Lehner_Website_25.jpg" alt="25"><div class="title"><span>Title 25</span><span>Medium, Year</span></div></div>
+      <div class="tile" tabindex="0"><img src="Fotos_Reihe/Tessi_Lehner_Website_26.jpg" alt="26"><div class="title"><span>Title 26</span><span>Medium, Year</span></div></div>
+      <div class="tile" tabindex="0"><img src="Fotos_Reihe/Tessi_Lehner_Website_27.jpg" alt="27"><div class="title"><span>Title 27</span><span>Medium, Year</span></div></div>
+      <div class="tile" tabindex="0"><img src="Fotos_Reihe/Tessi_Lehner_Website_28.jpg" alt="28"><div class="title"><span>Title 28</span><span>Medium, Year</span></div></div>
+      <div class="tile" tabindex="0"><img src="Fotos_Reihe/Tessi_Lehner_Website_29.jpg" alt="29"><div class="title"><span>Title 29</span><span>Medium, Year</span></div></div>
+      <div class="tile" tabindex="0"><img src="Fotos_Reihe/Tessi_Lehner_Website_30.jpg" alt="30"><div class="title"><span>Title 30</span><span>Medium, Year</span></div></div>
+    </div>
+  </div>
+
+<script>
+(function() {
+  const container = document.querySelector('.flex-grid');
+  const tiles = () => Array.from(container.querySelectorAll('.tile'));
+  
+  // Track expanded tiles in order (oldest first)
+  const MAX_EXPANDED = 2;
+  let expandedOrder = [];
+  
+  // Get CSS variables
+  function getCSSVar(name) {
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  }
+  
+  function getNumCols() {
+    return parseInt(getCSSVar('--cols')) || 7;
+  }
+  
+  function getGap() {
+    return parseInt(getCSSVar('--gap')) || 4;
+  }
+  
+  function getExpandSpan() {
+    return parseFloat(getCSSVar('--expand-span')) || 2.5;
+  }
+  
+  // Check if mobile
+  function isMobile() {
+    return window.innerWidth <= 768;
+  }
+
+  // Group tiles into visual rows based on their top position
+  function getRows() {
+    const allTiles = tiles();
+    const rows = [];
+    let currentRow = [];
+    let currentTop = null;
+    
+    allTiles.forEach(tile => {
+      const rect = tile.getBoundingClientRect();
+      if (currentTop === null || Math.abs(rect.top - currentTop) < 5) {
+        currentRow.push(tile);
+        currentTop = rect.top;
+      } else {
+        if (currentRow.length) rows.push(currentRow);
+        currentRow = [tile];
+        currentTop = rect.top;
+      }
+    });
+    if (currentRow.length) rows.push(currentRow);
+    return rows;
+  }
+
+  // Calculate and apply sizes to keep row intact
+  function recalculateSizes() {
+    const allTiles = tiles();
+    const containerWidth = container.clientWidth;
+    const gap = getGap();
+    const cols = getNumCols();
+    const expandSpan = getExpandSpan();
+    const normalWidth = (containerWidth - (cols - 1) * gap) / cols;
+    const expandedWidth = isMobile() ? containerWidth : normalWidth * expandSpan + gap * (expandSpan - 1);
+    
+    // First, reset all tiles to let them flow naturally
+    allTiles.forEach(tile => {
+      tile.style.flexBasis = '';
+    });
+    
+    // Force reflow
+    container.offsetHeight;
+    
+    // Now get rows after natural flow
+    const rows = getRows();
+    
+    rows.forEach(row => {
+      const expandedInRow = row.filter(t => t.classList.contains('expanded'));
+      const normalInRow = row.filter(t => !t.classList.contains('expanded'));
+      
+      if (expandedInRow.length === 0) {
+        // No expanded tiles, all normal
+        row.forEach(tile => {
+          tile.style.flexBasis = normalWidth + 'px';
+        });
+      } else {
+        // On mobile, expanded takes full width
+        if (isMobile()) {
+          row.forEach(tile => {
+            if (tile.classList.contains('expanded')) {
+              tile.style.flexBasis = containerWidth + 'px';
+            } else {
+              tile.style.flexBasis = normalWidth + 'px';
+            }
+          });
+        } else {
+          // Calculate space taken by expanded tiles
+          const expandedTotalWidth = expandedInRow.length * expandedWidth;
+          const gapsCount = row.length - 1;
+          const availableForNormal = containerWidth - expandedTotalWidth - (gapsCount * gap);
+          const shrunkWidth = Math.max(availableForNormal / normalInRow.length, 20); // min 20px
+          
+          row.forEach(tile => {
+            if (tile.classList.contains('expanded')) {
+              tile.style.flexBasis = expandedWidth + 'px';
+            } else {
+              tile.style.flexBasis = shrunkWidth + 'px';
+            }
+          });
+        }
+      }
+    });
+  }
+
+  // FLIP animation
+  function getRects() {
+    return tiles().map(el => {
+      const r = el.getBoundingClientRect();
+      return { el, top: r.top, left: r.left, width: r.width, height: r.height };
+    });
+  }
+
+  function playFLIP(firstRects, lastRects, options = {}) {
+    const duration = options.duration ?? 420;
+    const easing = options.easing ?? 'cubic-bezier(.18,.9,.2,1)';
+
+    const rectByEl = new Map();
+    lastRects.forEach(r => rectByEl.set(r.el, r));
+
+    firstRects.forEach(first => {
+      const el = first.el;
+      const last = rectByEl.get(el);
+      if (!last) return;
+
+      const deltaX = first.left - last.left;
+      const deltaY = first.top - last.top;
+      const deltaW = first.width / last.width;
+      const deltaH = first.height / last.height;
+
+      if (Math.abs(deltaX) < 0.5 && Math.abs(deltaY) < 0.5 && Math.abs(deltaW - 1) < 0.01 && Math.abs(deltaH - 1) < 0.01) {
+        return;
+      }
+
+      el.style.transition = 'none';
+      el.style.transformOrigin = 'top left';
+      el.style.transform = `translate(${deltaX}px, ${deltaY}px) scale(${deltaW}, ${deltaH})`;
+      el.style.willChange = 'transform';
+
+      el.getBoundingClientRect();
+
+      requestAnimationFrame(() => {
+        el.style.transition = `transform ${duration}ms ${easing}`;
+        el.style.transform = '';
+      });
+
+      const cleanup = () => {
+        el.style.transition = '';
+        el.style.transform = '';
+        el.style.willChange = '';
+        el.removeEventListener('transitionend', cleanup);
+      };
+      el.addEventListener('transitionend', cleanup);
+    });
+  }
+
+  function toggleExpand(tile) {
+    const first = getRects();
+    
+    const isCurrentlyExpanded = tile.classList.contains('expanded');
+    
+    if (isCurrentlyExpanded) {
+      // Collapsing: remove from tracking
+      tile.classList.remove('expanded');
+      expandedOrder = expandedOrder.filter(t => t !== tile);
+    } else {
+      // Expanding: check if we need to close oldest
+      if (expandedOrder.length >= MAX_EXPANDED) {
+        const oldest = expandedOrder.shift(); // remove oldest from tracking
+        oldest.classList.remove('expanded'); // close it
+      }
+      tile.classList.add('expanded');
+      expandedOrder.push(tile); // add new one to end
+    }
+    
+    recalculateSizes();
+    
+    const last = getRects();
+    playFLIP(first, last, { duration: 420, easing: 'cubic-bezier(.18,.9,.2,1)' });
+  }
+
+  // Initial calculation
+  recalculateSizes();
+  
+  // Recalculate on resize
+  window.addEventListener('resize', () => {
+    recalculateSizes();
+  });
+
+  // Event listeners
+  document.querySelectorAll('.tile').forEach(tile => {
+    tile.addEventListener('click', () => toggleExpand(tile));
+    tile.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+        e.preventDefault();
+        toggleExpand(tile);
+      }
+    });
+  });
+})();
+
+// Overlay functionality
+(function() {
+  const infoBtn = document.getElementById('infoBtn');
+  const overlay = document.getElementById('overlay');
+  const overlayGrid = document.getElementById('overlayGrid');
+  
+  // Content for the 3 divs
+  const contactContent = `
+    <div class="overlay-contact">
+      <span>Tessi Lehner</span>
+      <div class="contact-items">
+        <a href="mailto:tessi@example.com">E-Mail</a>
+        <a href="https://instagram.com" target="_blank">Instagram</a>
+      </div>
+    </div>
+  `;
+  
+  const aboutContent = `
+    <div class="overlay-about">
+      <h3>About:</h3>
+      <div class="about-text">
+        <p>This website serves as a visual overview of my current and past projects, a small archive of my evolving aesthetic. It traces how my perspective has shifted over the years, how materials return, and how new forms of expression emerge.</p>
+        <p>As an open collection, it continuously takes on new shapes through different media. Digital and analogue photography, scans, screen printing, readymades, and text form the core elements of my visual practice.
+        <p>My bachelor project <em>Mono No Aware</em> brings this approach together in both theme and visual form. It began with a photographic series of granite and lava stones from Iceland, later expanded into a screen-printing series. Conceptually, the project explores an inner shift in state, experienced through three stages. The central question of my thesis asks: Can visual communication make an inner transformation visible, and therefore more understandable for us humans?
+        This final project of my studies at the University of Art and Design Linz is currently exhibited at several locations across Austria.</p>
+        <p>Tessi Lehner studied Visual Communication at the University of Art and Design Linz.
+        <a href="#">CV</a> & <a href="#">Exhibition Catalogues</a></p>
+      </div>
+    </div>
+  `;
+  
+  const projectsContent = `
+    <div class="overlay-projects">
+      <h3>Projects:</h3>
+      <div class="project-list">
+        <div class="project-item"><span class="project-title">Mono No Aware</span><br><span class="project-info">BA Projekt, 2025</span></div>
+        <div class="project-item"><span class="project-title">Rom</span><br><span class="project-info">Fotoserie, 2018</span></div>
+        <div class="project-item"><span class="project-title">One Day A Friend Asked Me</span><br><span class="project-info">Screenprint, 2024</span></div>
+        <div class="project-item"><span class="project-title">Island</span><br><span class="project-info">Fotoserie, 2023</span></div>
+        <div class="project-item"><span class="project-title">Commercial Projekt für doppelpaula</span><br><span class="project-info">Stilleben, 2018</span></div>
+        <div class="project-item"><span class="project-title">Finish Playground</span><br><span class="project-info">Scans, 2023</span></div>
+        <div class="project-item"><span class="project-title">16hrs to Rovaniemi</span><br><span class="project-info">Videoprojekt, 2023</span></div>
+      </div>
+    </div>
+  `;
+  
+  // Check if mobile
+  const isMobile = () => window.innerWidth <= 768;
+  
+  // Grid is 6 cols x 2 rows on desktop, 1 col on mobile
+  const COLS = () => isMobile() ? 1 : 6;
+  const ROWS = () => isMobile() ? 3 : 2;
+  
+  function randomInt(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+  }
+  
+  function positionOverlayItems() {
+    overlayGrid.innerHTML = '';
+    
+    const cols = COLS();
+    const rows = ROWS();
+    
+    // On mobile, stack items vertically
+    if (isMobile()) {
+      const divs = [
+        { content: contactContent },
+        { content: aboutContent },
+        { content: projectsContent }
+      ];
+      
+      // Shuffle divs for random order
+      divs.sort(() => Math.random() - 0.5);
+      
+      divs.forEach((div, index) => {
+        const item = document.createElement('div');
+        item.className = 'overlay-item';
+        item.innerHTML = div.content;
+        item.style.gridColumn = '1';
+        item.style.gridRow = `${index + 1}`;
+        overlayGrid.appendChild(item);
+      });
+      
+      return;
+    }
+    
+    // Desktop layout (original code)
+    const occupied = new Set();
+    
+    const div1Size = 1;
+    const div2Size = randomInt(2,3);
+    const div3Size = randomInt(1, 2);
+    
+    const divs = [
+      { content: contactContent, size: div1Size },
+      { content: aboutContent, size: div2Size },
+      { content: projectsContent, size: div3Size }
+    ];
+    
+    divs.sort(() => Math.random() - 0.5);
+    
+    divs.forEach(div => {
+      let placed = false;
+      let attempts = 0;
+      
+      while (!placed && attempts < 100) {
+        attempts++;
+        
+        const row = randomInt(1, rows);
+        const maxStartCol = cols - div.size + 1;
+        if (maxStartCol < 1) continue;
+        
+        const startCol = randomInt(1, maxStartCol);
+        const endCol = startCol + div.size;
+        
+        let canPlace = true;
+        for (let c = startCol; c < endCol; c++) {
+          const cellKey = `${row}-${c}`;
+          if (occupied.has(cellKey)) {
+            canPlace = false;
+            break;
+          }
+        }
+        
+        if (canPlace) {
+          for (let c = startCol; c < endCol; c++) {
+            occupied.add(`${row}-${c}`);
+          }
+          
+          const item = document.createElement('div');
+          item.className = 'overlay-item';
+          item.innerHTML = div.content;
+          item.style.gridColumn = `${startCol} / ${endCol}`;
+          item.style.gridRow = `${row}`;
+          
+          overlayGrid.appendChild(item);
+          placed = true;
+        }
+      }
+    });
+  }
+  
+  infoBtn.addEventListener('click', () => {
+    const isActive = overlay.classList.contains('active');
+    
+    if (isActive) {
+      overlay.classList.remove('active');
+      infoBtn.textContent = 'About';
+    } else {
+      positionOverlayItems();
+      overlay.classList.add('active');
+      infoBtn.textContent = 'Close';
+    }
+  });
+  
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && overlay.classList.contains('active')) {
+      overlay.classList.remove('active');
+      infoBtn.textContent = 'About';
+    }
+  });
+})();
+</script>
+  
+</body>
+</html>
