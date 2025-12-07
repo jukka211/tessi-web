@@ -224,16 +224,24 @@ html,body {
 .overlay-contact {
   padding: 4px;
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
+  height: 95%;
   justify-content: space-between;
+}
+
+.contact-div {
+  display: flex;
+  flex-direction: row;
   gap: 15px;
+  justify-content: space-between;
+  width: 100%;
 }
 
 .contact-items {
   display: flex;
   flex-direction: column;
-  gap: 4px;
 }
+
 
 /* About div */
 .overlay-about {
@@ -545,12 +553,16 @@ html,body {
   // Content for the 3 divs
   const contactContent = `
     <div class="overlay-contact">
+      <div class="contact-div">
       <span>Tessi Lehner</span>
       <div class="contact-items">
         <a href="mailto:tessi@example.com">E-Mail</a>
         <a href="https://instagram.com" target="_blank">Instagram</a>
+        <a href="https://instagram.com" target="_blank">Linkedin</a>
       </div>
     </div>
+    <span>© 2025</span>
+  </div>
   `;
   
   const aboutContent = `
