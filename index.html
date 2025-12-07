@@ -106,10 +106,10 @@ html,body {
   :root { --cols: 5; }
 }
 @media (max-width: 800px) {
-  :root { --cols: 3; }
+  :root { --cols: 3; --gap: 4px;}
 }
 @media (max-width: 480px) {
-  :root { --cols: 2; --gap: 10px; }
+  :root { --cols: 2; --gap: 4px; }
   .tile { min-width: 90px; }
 }
 
@@ -130,7 +130,7 @@ html,body {
   .overlay-projects,
   .overlay-contact {
     flex-direction: column;
-    gap: 8px;
+    gap: 4px;
   }
   
   .overlay {
