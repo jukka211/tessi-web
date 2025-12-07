@@ -154,10 +154,14 @@ html,body {
   font-family: inherit;
   display: flex;
   align-items: center;   /* Vertically centers content */
+  color:black !important;
 }
-.info a {
+#info-btn {
+  color:black !important;
+}
+.info-btn a {
   text-decoration: none;
-  color:black;
+  color:black !important;
 }
 .info-btn:hover {
   background: rgb(209, 209, 209);
@@ -280,7 +284,7 @@ html,body {
 </head>
 <body>
   <!-- Info Button -->
-  <button class="info-btn" id="infoBtn">About</button>
+  <button class="info-btn" id="infoBtn" >About</button>
   
   <!-- Overlay -->
   <div class="overlay" id="overlay">
